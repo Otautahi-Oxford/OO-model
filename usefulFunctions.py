@@ -86,16 +86,16 @@ def nuOrb2r(nu, orb):
     
 #### EXAMPLE ####
 
-import orbitSampler
+# import orbitSampler
 
-orb = orbitSampler.sampleOrbits(1,5, 61000, 61500).iloc[0]
+# orb = orbitSampler.sampleOrbits(1,5, 61000, 61500).iloc[0]
 
-MJDs = 61250 + np.array([-300, -150, 0, 150, 300])
-print("\nFor MJDs: ", MJDs)
-nu = t2nu(MJDs, orb)
-print("\nTrue anomalies are (in radians): ", nu)
-positions = nuOrb2r(nu, orb)
-print("\nwith positions in Cartesian Ecliptic coords: \n", positions)
+# MJDs = 61250 + np.array([-300, -150, 0, 150, 300])
+# print("\nFor MJDs: ", MJDs)
+# nu = t2nu(MJDs, orb)
+# print("\nTrue anomalies are (in radians): ", nu)
+# positions = nuOrb2r(nu, orb)
+# print("\nwith positions in Cartesian Ecliptic coords: \n", positions)
 
 
 
