@@ -3,14 +3,14 @@ A data-driven model of the velocity distribution of ISOs in the solar neighbourh
 
 # The Velocity Distribution 
 
-![Alt text](https://github.com/Otautahi-Oxford/OO-model/_readme_files/UV.png)
+![Galactic in-plane velocity disribution with three known ISO velocities](https://github.com/Otautahi-Oxford/OO-model/blob/main/_readme_files/UV.png)
 
-![Alt text](https://github.com/Otautahi-Oxford/OO-model/_readme_files/radiants.png)
+![Distribution of ISO radiants with three known ISOs](https://github.com/Otautahi-Oxford/OO-model/blob/main/_readme_files/radiants.png)
 
 
 # Orbit Sampling Method
 
-![Alt text](https://github.com/Otautahi-Oxford/OO-model/_readme_files/oneDirectionOrbs.png)
+![Sample of orbits passing through inner Solar system](https://github.com/Otautahi-Oxford/OO-model/blob/main/_readme_files/oneDirectionOrbs.png)
 
 
 
