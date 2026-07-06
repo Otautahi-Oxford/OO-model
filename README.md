@@ -27,8 +27,8 @@ The remaining columns of *velDist.csv* give some of the properties of each star 
 
 The above velocity distribution gives the kinematics of ISOs in the solar neighbourhood but before entering the solar system, far from the gravitational influence of the Sun. However, in the inner solar system where ISOs are observable, the ISO population is subject to complex velocity-dependent effects such as gravitational focussing.
 
-*orbitSampler.py* and its function *sampleOrbits* implements the analytical trajectory sampling method described in appendix A of [Dorsey et al. (2025)](https://ui.adsabs.harvard.edu/abs/2025PSJ.....6..214D/abstract). 
-It assumes ISOs move on hyperbolae centred on the solar system barycentre, allowing the fast sampling of any number of ISO trajectories passing through a sphere over the course of a finite-length survey.
+*orbitSampler.py* and its function *sampleOrbits* implements the analytical trajectory sampling method described in appendix A of [Dorsey et al. (2025)](https://ui.adsabs.harvard.edu/abs/2025PSJ.....6..214D/abstract), allowing the sampling of any number of ISO trajectories passing through a sphere over the course of a finite-length survey. 
+It assumes the above *Gaia*-based velocity distribution, and assumes ISO move on hyperbolae centred on the solar system barycentre.
 This method is fast and efficient as it does not require inefficient rejection sampling or slow orbit integration to capture the effect of gravitational focussing.
 
 ![Sample of orbits passing through inner solar system](https://github.com/Otautahi-Oxford/OO-model/blob/main/_readme_files/oneDirectionOrbs.png)
