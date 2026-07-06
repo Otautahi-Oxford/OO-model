@@ -3,12 +3,14 @@ A data-driven model of the velocity distribution of ISOs in the solar neighbourh
 
 # The Velocity Distribution 
 
-![](https://github.com/Otautahi-Oxford/OO-model/_readme_files/UV.png)
+![Alt text](https://github.com/Otautahi-Oxford/OO-model/_readme_files/UV.png)
 
+![Alt text](https://github.com/Otautahi-Oxford/OO-model/_readme_files/radiants.png)
 
-![](https://github.com/Otautahi-Oxford/OO-model/_readme_files/radiants.png)
 
 # Orbit Sampling Method
+
+![Alt text](https://github.com/Otautahi-Oxford/OO-model/_readme_files/oneDirectionOrbs.png)
 
 
 
