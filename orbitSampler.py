@@ -120,16 +120,17 @@ def drawBs(indx, r_obs, T):
     
     Inverts cdf by root-finding.
     
-    #TODO INVESTIGATE
-    Exactly one input datapoint always makes it fail, i=57894 (old table) which is also the lowest speed and
-    quite highly weighted. Could just cut it, but why does it fail?
+    Exactly one input datapoint from original Hopkins+(2025) dataset causes an 
+    odd failure of rootfinding, probably due to low velocity:
+    vinf = 0.00016588 AU/JD
     A = 10751
     Bmax = 415
-    Maybe it is in finite difference formula it goes funny? For now, just deleted it from table
+    This is now removed when velDist.csv is generated.
     
-    #TODO INVESTIGATE
-    Approxiately 1/100000 get result=True but x=nan.
-    This happends when rando is too high (> about 0.99999), so just rerunning them
+    Approxiately 1/100000 samples get result=True but x=nan.
+    This happends when rando is too high (> about 0.99999), so I've set an 
+    upper limit of 0.9999. The equipment to rerun failured fits remains below, 
+    but is not needed (in my test runs at least).
     """
     A = mu/vinf_table[indx]**2
     Bmax = np.sqrt(r_obs**2+2*r_obs*A)
@@ -142,7 +143,7 @@ def drawBs(indx, r_obs, T):
     # fails = np.nonzero(~results[0])[0]
     assert np.all(results[0])
     i_nans = np.nonzero(np.isnan(x))[0]
-    print(f'\nRerunning nans: {i_nans}')
+    print(f'\nnans to rerun: {i_nans}')
     for i in i_nans:
         print(i)
         print(A[i])
@@ -273,4 +274,4 @@ def sampleOrbits(N, r_obs, MJD_start, MJD_end, savepath=None):
         orbtabledf.to_csv(savepath)
     
     return orbtabledf
-    
+
