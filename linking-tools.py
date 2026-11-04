@@ -50,42 +50,30 @@ import usefulFunctions
 import orbitSampler
 
 
-cone_lon, cone_lat, cone_halfangle = 150*3.14/180, -10*3.14/180, 1.75*3.14/180
-
-# Ra dec of cosmos = 
-
-N = int(1e7)
-r_obs = 20
-delta_r = 5
-
-
-MJD_start = 0
-MJD_end = 0 # just want static population
-
-
-def get_orbs(N, r_obs, delta_r, cone_lon, cone_lat, cone_halfangle):
+def get_orbs(N, rh, delta_r, cone_lon, cone_lat, cone_halfangle):
     
     Ntrial = int(1e6) # gives about 100 in cone
     Nsampled = 0
     orbs = pd.DataFrame([])
     while Nsampled<N:
         print(Nsampled)
-        trialorbs = orbitSampler.sampleOrbits(Ntrial, r_obs, MJD_start, MJD_end)
+        trialorbs = orbitSampler.sampleOrbits(Ntrial, rh+delta_r/2, 0, 0)
+        # MJD range just 0-0 as we want static population at one time
         
         nu = usefulFunctions.t2nu(0, trialorbs)
-        r_vecs = usefulFunctions.nuOrb2r(nu, trialorbs)
-        lon, lat, rh = usefulFunctions.vec2spherical(r_vecs)
+        orb_r_vecs = usefulFunctions.nuOrb2r(nu, trialorbs)
+        orb_lon, orb_lat, orb_rh = usefulFunctions.vec2spherical(orb_r_vecs)
             
-        trialmask = ((r_obs-delta_r<=rh)
-                &(rh<=r_obs)
-                &(usefulFunctions.angleBetween(lon,lat,cone_lon,cone_lat)<=cone_halfangle)
+        trialmask = ((rh-delta_r/2<=orb_rh)
+                &(orb_rh<=rh+delta_r/2)
+                &(usefulFunctions.angleBetween(orb_lon,orb_lat,cone_lon,cone_lat)<=cone_halfangle)
                 )
         orbs = pd.concat([orbs, trialorbs])
         Nsampled += np.count_nonzero(trialmask)
     return orbs.iloc[:N]
 
 
-def get_rates(orbs, r_obs, delta_r, cone_lon, cone_lat, cone_halfangle):    
+def get_rates(orbs, rh, delta_r, cone_lon, cone_lat, cone_halfangle):    
     delta_t = 1 #days?
     
     nu1 = usefulFunctions.t2nu(0, orbs)
@@ -106,25 +94,55 @@ def get_rates(orbs, r_obs, delta_r, cone_lon, cone_lat, cone_halfangle):
     # above prevents 0/360 bug
     rate_lat = (lat2 - lat1)/delta_t
     
-    return rate_loncoslat, rate_lat
+    rate_rh = (rh2 - rh1)/delta_t
+    
+    return rate_rh, rate_loncoslat, rate_lat
 
 
-orbs = get_orbs(1000, r_obs, delta_r, cone_lon,cone_lat, cone_halfangle)
+def plot_rates(N, rh, cone_lon,cone_lat, suptext=None):
+    
+    cone_halfangle = 1.75*3.14/180 # LSST field
+        
+    delta_r = 5 
+    
+    orbs = get_orbs(N, rh, delta_r, cone_lon, cone_lat, cone_halfangle)
+    
+    rate_rh, rate_loncoslat, rate_lat = get_rates(orbs, rh, delta_r, cone_lon, cone_lat, cone_halfangle)
+    
+    cov = np.cov([rate_rh, rate_loncoslat, rate_lat])
+    print('rate_loncoslat width = ', np.sqrt(cov[1,1])*180/3.14, ' deg/day')
+    print('rate_lat width = ', np.sqrt(cov[2,2])*180/3.14, ' deg/day')
+    
+    plotwidth = 5*(cov[1,1]*cov[2,2])**0.25
+    
+    asPerHour = True
+    fig,axs = plt.subplots(ncols=2, figsize=[8,4])
+    ax=axs[0]
+    ax.scatter(rate_loncoslat*180/3.14 *(60**2/24 if asPerHour else 1), 
+               rate_lat*180/3.14*(60**2/24 if asPerHour else 1),
+               s=0.1)
+    ax.set_xlim((np.mean(rate_loncoslat)
+                   +plotwidth*np.array([-1,1])
+                   )*180/3.14*(60**2/24 if asPerHour else 1))
+    ax.set_ylim((np.mean(rate_lat)
+                   +plotwidth*np.array([-1,1])
+                   )*180/3.14*(60**2/24 if asPerHour else 1))
+    ax.set_xlabel('longitude rate cos(latitude) / ' + ('arcsec/hour' if asPerHour else 'deg/day'))
+    ax.set_ylabel('latitude rate / ' + ('arcsec/hour' if asPerHour else 'deg/day'))
+    ax=axs[1]
+    ax.hist(rate_rh, bins=np.linspace(*(np.mean(rate_rh)+
+                                      3*np.sqrt(cov[0,0])*np.array([-1,1])), 31)
+            )
+    ax.set_xlabel('rh rate / au/day')
+    fig.suptitle(f'{suptext}rh={rh:.0f} au, cone_lon={cone_lon*180/3.14:.0f} deg, cone_lat={cone_lat*180/3.14:.0f} deg')
 
-rate_loncoslat, rate_lat = get_rates(orbs, r_obs, delta_r, cone_lon, cone_lat, cone_halfangle)
-
-cov = np.cov(rate_loncoslat, rate_lat)
-print('rate_loncoslat width = ', np.sqrt(cov[0,0])*180/3.14, ' deg/day')
-print('rate_lat width = ', np.sqrt(cov[1,1])*180/3.14, ' deg/day')
-
-asPerHour = False
-fig,ax = plt.subplots()
-ax.scatter(rate_loncoslat*180/3.14 *(60**2/24 if asPerHour else 1), 
-           rate_lat*180/3.14*(60**2/24 if asPerHour else 1),
-           s=0.1)
-ax.set_xlabel('longitude rate cos(latitude) / ' + ('arsec/hour' if asPerHour else 'deg/day'))
-ax.set_ylabel('latitude rate / ' + ('arsec/hour' if asPerHour else 'deg/day'))
-ax.set_title(f'r_obs={r_obs:.1f} au, cone_lon={cone_lon*180/3.14:.1f} deg, cone_lat={cone_lat*180/3.14:.1f} deg')
 
 
+#rates example
+cosmos_lon, cosmos_lat = 150*3.14/180, -10*3.14/180 #cosmos field
+
+N = int(1e3)
+
+for rh in [10,40,100]:
+    plot_rates(N, rh, cosmos_lon, cosmos_lat, suptext='COSMOS FIELD\n')
 

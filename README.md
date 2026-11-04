@@ -6,7 +6,7 @@ A data-driven model of the velocity distribution of interstellar objects (ISOs) 
 
 Interstellar objects disperse away from parent stars quickly, mixing into the Galaxy-spanning population beyond the possiblity of backtracing beyond a few Myr. However, ISOs are are ejected relatively slowly, and are subject to the same Galactic dynamics as stars, meaning the ISO population as a whole will share the kinematics of the Milky Way's stellar population. 
 
-This means we can use nearby stars to predict the properties of the ISOs we observe passing through the solar system **_despite the fact that these stars are not the parent stars of those ISOs_**. The resulting velocity distribution is complex and non-Gaussian, with over- and under-densities introduced by orbital resonances with the Milky Way's spiral arms and bar. 
+This means we can use nearby stars to predict the properties of the ISOs we observe passing through the solar system, despite the fact that these stars are not the parent stars of those ISOs. The resulting velocity distribution is complex and non-Gaussian, with over- and under-densities introduced by orbital resonances with the Milky Way's spiral arms and bar. 
 ![Galactic in-plane velocity disribution with three known ISO velocities](https://github.com/Otautahi-Oxford/OO-model/blob/main/_readme_files/UV.png)
 
 Our prediction of the ISO velocity distribution is based on a sample of ~200,000 stars within 200pc of the Sun observed by *Gaia*, debiased from survey selection effects. It is stored here in *velDist.csv* in the form of a weighted list of 3D velocities in km/s relative to the Sun in the Galactic frame (*U*, *V*, *W*). Two weightings are given: 

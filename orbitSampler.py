@@ -89,6 +89,21 @@ def drawVels(N, r_obs, T):
     indx = np.digitize(randos, csw)-1
     return indx
 
+def drawStreamingVels(N, r_obs):
+    """
+    Equivalent to drawVels for an infinitely large T, for sampling the
+    streaming population
+    """
+    A = mu/vinf_table**2 #AU
+    Bmax = np.sqrt(r_obs**2+2*A*r_obs) #AU
+    
+    marginalised_weights = ISO_weights*Bmax**2*vinf_table
+    # weights that give U,V,W distribution of velocities marginalised over B, phi and tau
+    # in streaming case, simply propto cross-sectional area x speed
+    csw = np.append([0], np.cumsum(marginalised_weights/marginalised_weights.sum()))
+    randos = np.random.uniform(size=N) # uniform draws from [0,1]
+    indx = np.digitize(randos, csw)-1
+    return indx
 
 def Bcdf(x, A, r_obs, T, offset=0.0):
     """
@@ -109,7 +124,19 @@ def Bcdf(x, A, r_obs, T, offset=0.0):
           )/(2/3 - Ap*(np.sqrt(Ap**2+1)-Ap**2*np.log((1+np.sqrt(1+Ap**2))/Ap)) + vinf*T/(2*Bmax)
         )
     return cdf - offset
+
+def streamingBcdf(x, A, r_obs, offset=0.0):
+    """
+    Equiv to Bcdf, for streaming, T>>t_res population
     
+    not really necessary as a seperate function, as for T>>tres B sampling is 
+    just propto **2, but good to keep stucture
+    """
+    vinf = np.sqrt(mu/A)
+    Bmax = np.sqrt(r_obs**2+2*A*r_obs)
+    Ap = A/Bmax
+    cdf = x**2
+    return cdf - offset
 
 def drawBs(indx, r_obs, T):
     """
@@ -143,15 +170,47 @@ def drawBs(indx, r_obs, T):
     # fails = np.nonzero(~results[0])[0]
     assert np.all(results[0])
     i_nans = np.nonzero(np.isnan(x))[0]
-    print(f'\nnans to rerun: {i_nans}')
+    # print(f'\nnans to rerun: {i_nans}')
     for i in i_nans:
-        print(i)
+        print(f'\nnan to rerun: {i}')
         print(A[i])
         print(randos[i])
         print(results[0][i])
         print(results[1][i])
         newrando = np.random.uniform(0,1)
         x[i], *newresult = newton(Bcdf, args=(A[i],r_obs,T,newrando), x0 = newrando, full_output=True)
+        print(x[i], newrando, newresult)
+    
+    assert np.all(~np.isnan(x))
+    assert np.all(x>=0)
+    assert np.all(x<1)
+    return Bmax*x
+
+
+def drawStreamingBs(indx, r_obs):
+    """
+    Equiv to drawBs, but for streaming, T>>t_res population
+    """
+    A = mu/vinf_table[indx]**2
+    Bmax = np.sqrt(r_obs**2+2*r_obs*A)
+    randos = np.random.uniform(0, 0.9999, size=len(indx)) # uniform draws from [0,1]
+    # upperlimit of 0.9999 stops weird error
+    x, *results = newton(streamingBcdf, args=(A,r_obs,randos), x0 = randos, full_output=True)
+    # remember Bcdf takes input as x=B/Bmax, not B
+    
+    #checking
+    # fails = np.nonzero(~results[0])[0]
+    assert np.all(results[0])
+    i_nans = np.nonzero(np.isnan(x))[0]
+    # print(f'\nnans to rerun: {i_nans}')
+    for i in i_nans:
+        print(f'\nnan to rerun: {i}')
+        print(A[i])
+        print(randos[i])
+        print(results[0][i])
+        print(results[1][i])
+        newrando = np.random.uniform(0,1)
+        x[i], *newresult = newton(Bcdf, args=(A[i],r_obs,newrando), x0 = newrando, full_output=True)
         print(x[i], newrando, newresult)
     
     assert np.all(~np.isnan(x))
@@ -188,6 +247,18 @@ def sampleOrbits(N, r_obs, MJD_start, MJD_end, savepath=None):
     Makes N draws from the distribution of ISOs passing within an observable 
     sphere of radius r_obs within given MJD range using method of Dorsey et al. 
     (2025) Appendix A.
+    
+    Reason for MJD range is that if survey length (MJD_end - MJD_start)
+    is similar to residence time (t_res) of ISOs, population visible to survey
+    is combination of ISOs within observable sphere when survey starts PLUS
+    ISOs that pass into the sphere over the course of the survey
+    
+    To sample static population of ISOs at given time, just MJD_start = MJD_end = 0.
+    To sample population streaming into sphere over long period of time (i.e.
+    ignoring population in sphere at start of survey) either use 
+    MJD_start - MJD_end >> t_res and ignore sampled tau,
+    or use new function sampleStreamingPopulation()
+    
     """
     T_survey = MJD_end - MJD_start
     indx = drawVels(N, r_obs, T_survey)
@@ -274,4 +345,139 @@ def sampleOrbits(N, r_obs, MJD_start, MJD_end, savepath=None):
         orbtabledf.to_csv(savepath)
     
     return orbtabledf
+
+
+def sampleStreamingOrbits(N, r_obs, savepath=None):
+    """
+    Samples distribution of trajectories passing into observable sphere
+    over long period of time (i.e. ignores contribtuion within sphere at
+    start of sampling)
+    
+    """
+    
+    # T_survey = 10000*t_res_func(0, mu/(1*vconv)**2, r_obs)
+    indx = drawStreamingVels(N, r_obs)
+    vinf = vinf_table[indx]
+    A = mu/vinf**2 #useful quantity for integrals, equal to -1*semi-major axis (therefore is positive)
+    Bmax = np.sqrt(r_obs**2+2*A*r_obs)
+    B = drawStreamingBs(indx, r_obs) # impact parameter, AU
+    phi = np.random.uniform(0, 2*np.pi, N) # measured from ECLIPTIC +ve z-axis, anticlockwise
+    t_res = t_res_func(B/Bmax, A, r_obs) # residence times, Julian days
+    
+    tau = np.zeros(N)
+    # MJD of perihelion meaningless in streaming population
+    
+    #### Orbital Elements ####
+    #now converts my parameters (U, V, W, B, phi) 
+    # to classical orbit elements (a, e, i, RAAN, argp)
+    
+    sma = -A # semi-major axis, AU
+    lon, lat = v2lonlat(gaiadf['U'].to_numpy()[indx],
+                        gaiadf['V'].to_numpy()[indx],
+                        gaiadf['W'].to_numpy()[indx])
+    
+    v_unit_vec = np.array([np.cos(lon)*np.cos(lat),
+                           np.sin(lon)*np.cos(lat),
+                                       np.sin(lat)]).transpose(1,0)
+    B_unit_vec = np.array([-np.cos(lon)*np.sin(lat)*np.cos(phi) -np.sin(lon)*np.sin(phi),
+                           -np.sin(lon)*np.sin(lat)*np.cos(phi) +np.cos(lon)*np.sin(phi),
+                           np.cos(lat)*np.cos(phi)]).transpose(1,0)
+    # transposes here make 0th axis the different samples, and the 1st axis
+    #the element of the vector. This is so matrix functions work
+    print(f'CHECK: {np.abs(np.sum(B_unit_vec*v_unit_vec,axis=1)).max()} should be 0')
+    #checks perpendicular
+    
+    h_unit_vec = np.cross(B_unit_vec,v_unit_vec)
+    print(f'CHECK: {np.abs(np.sum(h_unit_vec**2, axis=1)-1).max()} should be 0')
+    #checks normalised
+    
+    N_unit_vec = np.cross(np.array([0,0,1]), h_unit_vec) # ascending node vector
+    N_unit_vec /= np.sqrt(np.sum(N_unit_vec**2, axis=1)).reshape(-1,1)
+    print(f'CHECK: {np.abs(np.sum(N_unit_vec**2, axis=1)-1).max()} should be 0')
+    #checks normalised
+    
+    ecc_vec = np.cross(v_unit_vec,np.cross(B_unit_vec,v_unit_vec))*(B/A).reshape(-1,1) + v_unit_vec
+    ecc = np.sqrt(np.sum(ecc_vec**2, axis=1))
+    ecc_unit_vec = ecc_vec/ecc.reshape(-1,1)
+    print(f'CHECK: {ecc.min()} should be >=1')
+    print(f'CHECK: {np.abs(np.sqrt(ecc**2-1)*A - B).max()} should be 0')
+    # checks equality of all
+    print(f'CHECK: {np.abs(np.sum(ecc_unit_vec**2, axis=1)-1).max()} should be 0')
+    #checks normalised
+    
+    raan = np.where(N_unit_vec[:,1]>=0, 
+                         np.arccos(N_unit_vec[:,0]),
+                         2*np.pi-np.arccos(N_unit_vec[:,0]))
+    argp = np.where(ecc_unit_vec[:,2]>=0, 
+                       np.arccos(np.sum(N_unit_vec*ecc_unit_vec,axis=1)),
+                       2*np.pi - np.arccos(np.sum(N_unit_vec*ecc_unit_vec,axis=1)))
+    inc = np.arccos(h_unit_vec[:,2]) 
+    
+    perihel = -A + np.sqrt(A**2+B**2)
+
+    #### Output ####
+    
+    d = {'vinf': vinf, # speed of ISO at infinity - in AU/day !
+         'B': B, # speed of ISO at infinity - in AU/day !
+         'perihel': perihel, # perihelion distance - AU
+         'ecc': ecc, # eccentricity
+         'inc': inc, # inclination - radians because I'm a theorist
+         'raan': raan, # RA of the ascending node - radians
+         'argp': argp, # argument of perihelion - radians
+         'tau': tau, # MJD of perihelion
+         'sma': sma, # semi-major axis length (negative as hyperbolae) - AU
+         'phi': phi, # position angle of impact parameter
+         't_res': t_res, # residence time of observable sphere - days
+         'U': gaiadf['U'].to_numpy()[indx],
+         'V': gaiadf['V'].to_numpy()[indx],
+         'W': gaiadf['W'].to_numpy()[indx], 
+         # components of pre-encounter velocity relative to Galactic frame - KM/S!
+         'source_id': gaiadf['source_id'].to_numpy()[indx], # ID of corresponding star in gaia
+         }
+    orbtabledf = pd.DataFrame(data=d)
+    
+    if savepath is not None:
+        orbtabledf.to_csv(savepath)
+    
+    return orbtabledf
+
+
+# example
+
+# orbs1 = sampleOrbits(10000,5,0,0)
+# orbs2 = sampleStreamingOrbits(10000, 5)
+
+# import matplotlib.pyplot as plt
+
+# fig,ax = plt.subplots()
+# ax.hist(orbs1.perihel,histtype='step',bins=np.linspace(0,5,31), label='static')
+# ax.hist(orbs2.perihel,histtype='step',bins=np.linspace(0,5,31), label='streaming')
+# ax.set_xlabel('perihel / au')
+# # static population of ISOs within observable sphere has fewer samples at 
+# # high perihelion because these are less gravitationally-focussed and slower
+# # points have longer residence time
+
+# fig,ax = plt.subplots()
+# ax.hist(orbs1.vinf/vconv,histtype='step',bins=np.linspace(0,100,51))
+# ax.hist(orbs2.vinf/vconv,histtype='step',bins=np.linspace(0,100,51))
+# ax.set_xlabel('vinf / km/s')
+
+# fig,ax = plt.subplots()
+# ax.hist(orbs1.B,histtype='step',bins=np.linspace(0,10,31))
+# ax.hist(orbs2.B,histtype='step',bins=np.linspace(0,10,31))
+# ax.set_xlabel('B / au')
+
+# fig,ax = plt.subplots()
+# ax.hist(np.cos(orbs1.inc),histtype='step',bins=np.linspace(-1,1,31))
+# ax.hist(np.cos(orbs2.inc),histtype='step',bins=np.linspace(-1,1,31))
+# ax.set_xlabel('cos(inclination)')
+# fig,ax = plt.subplots()
+# ax.hist(orbs1.argp*180/3.14,histtype='step',bins=np.linspace(-0,360,31))
+# ax.hist(orbs2.argp*180/3.14,histtype='step',bins=np.linspace(0,360,31))
+# ax.set_xlabel('argp')
+# fig,ax = plt.subplots()
+# ax.hist(orbs1.raan*180/3.14,histtype='step',bins=np.linspace(-0,360,31))
+# ax.hist(orbs2.raan*180/3.14,histtype='step',bins=np.linspace(0,360,31))
+# ax.set_xlabel('RAAN')
+
 
