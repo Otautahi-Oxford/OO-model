@@ -26,7 +26,7 @@ def angleBetween(lon1,lat1,lon2,lat2):
     dlon = lon2-lon1
     dlat = lat2-lat1
     # 0.9999* would prevent nan due to numerical error when angle=180deg, add if needed
-    return 2*np.arcsin(np.sqrt(np.sin(dlat/2)**2 + np.cos(lon1)*np.cos(lat2)*np.sin(dlon/2)**2))
+    return 2*np.arcsin(np.sqrt(np.sin(dlat/2)**2 + np.cos(lat1)*np.cos(lat2)*np.sin(dlon/2)**2))
     
 
 def t2nu(t, orb):
