@@ -26,9 +26,21 @@ Bmax = np.sqrt(r_obs**2 + 2*A*r_obs) is the maximum impact parameter an ISO
     with velocity vinf can have and still pass within sphere of radius r_obs
 
 
-sampleOrbits() is the main function.
+sampleOrbits() is the main function. 
 
+Input number of samples, radius of observable sphere sampled trajectories are 
+passing through, and MJD range of observations.
 
+Reason for MJD range is that if survey length (MJD_end - MJD_start)
+is similar to residence time (t_res) of ISOs, ISOs visible to survey
+is combination of ISOs within observable sphere when survey starts PLUS
+ISOs that pass into the sphere over the course of the survey
+
+To sample static population of ISOs at given time, just MJD_start = MJD_end = 0.
+To sample population streaming into sphere over long period of time (i.e.
+ignoring population in sphere at start of survey) either use 
+MJD_start - MJD_end >> t_res and ignore sampled tau,
+or use new function sampleStreamingPopulation()
 
 """
 
@@ -242,7 +254,7 @@ def v2lonlat(U,V,W):
     return (crds.lon.to(u.rad).value, crds.lat.to(u.rad).value)
 
 
-def sampleOrbits(N, r_obs, MJD_start, MJD_end, savepath=None):
+def sampleOrbits(N, r_obs, MJD_start, MJD_end, savepath=None, printchecks=False):
     """
     Makes N draws from the distribution of ISOs passing within an observable 
     sphere of radius r_obs within given MJD range using method of Dorsey et al. 
@@ -289,25 +301,31 @@ def sampleOrbits(N, r_obs, MJD_start, MJD_end, savepath=None):
                            np.cos(lat)*np.cos(phi)]).transpose(1,0)
     # transposes here make 0th axis the different samples, and the 1st axis
     #the element of the vector. This is so matrix functions work
-    print(f'CHECK: {np.abs(np.sum(B_unit_vec*v_unit_vec,axis=1)).max()} should be 0')
+    if printchecks:
+        print(f'CHECK: {np.abs(np.sum(B_unit_vec*v_unit_vec,axis=1)).max()} should be 0')
     #checks perpendicular
     
     h_unit_vec = np.cross(B_unit_vec,v_unit_vec)
-    print(f'CHECK: {np.abs(np.sum(h_unit_vec**2, axis=1)-1).max()} should be 0')
+    if printchecks:
+        print(f'CHECK: {np.abs(np.sum(h_unit_vec**2, axis=1)-1).max()} should be 0')
     #checks normalised
     
     N_unit_vec = np.cross(np.array([0,0,1]), h_unit_vec) # ascending node vector
     N_unit_vec /= np.sqrt(np.sum(N_unit_vec**2, axis=1)).reshape(-1,1)
-    print(f'CHECK: {np.abs(np.sum(N_unit_vec**2, axis=1)-1).max()} should be 0')
+    if printchecks:
+        print(f'CHECK: {np.abs(np.sum(N_unit_vec**2, axis=1)-1).max()} should be 0')
     #checks normalised
     
     ecc_vec = np.cross(v_unit_vec,np.cross(B_unit_vec,v_unit_vec))*(B/A).reshape(-1,1) + v_unit_vec
     ecc = np.sqrt(np.sum(ecc_vec**2, axis=1))
     ecc_unit_vec = ecc_vec/ecc.reshape(-1,1)
-    print(f'CHECK: {ecc.min()} should be >=1')
-    print(f'CHECK: {np.abs(np.sqrt(ecc**2-1)*A - B).max()} should be 0')
+    if printchecks:
+        print(f'CHECK: {ecc.min()} should be >=1')
+    if printchecks:
+        print(f'CHECK: {np.abs(np.sqrt(ecc**2-1)*A - B).max()} should be 0')
     # checks equality of all
-    print(f'CHECK: {np.abs(np.sum(ecc_unit_vec**2, axis=1)-1).max()} should be 0')
+    if printchecks:
+        print(f'CHECK: {np.abs(np.sum(ecc_unit_vec**2, axis=1)-1).max()} should be 0')
     #checks normalised
     
     raan = np.where(N_unit_vec[:,1]>=0, 
