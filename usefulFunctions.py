@@ -22,6 +22,8 @@ def angleBetween(lon1,lat1,lon2,lat2):
     """
     angle between two points on sphere, uses haversine formula for stability
     https://en.wikipedia.org/wiki/Haversine_formula
+    
+    FORMULA CHANGE TO OOODEL
     """
     dlon = lon2-lon1
     dlat = lat2-lat1
@@ -71,7 +73,7 @@ def nuOrb2r(nu, orb):
     
     Column stack ensure's correct shape
     """
-    dist = -orb['sma']*(orb['ecc']**2-1)/(1+orb['ecc']*np.cos(nu))
+    dist = -np.asarray(orb['sma']*(orb['ecc']**2-1)/(1+orb['ecc']*np.cos(nu)))
     assert np.all(dist>0) # catches when nu is out of range
     arg = orb['argp']+nu
     return dist.reshape(-1,1)*np.column_stack([np.cos(orb['raan'])*np.cos(arg)
@@ -80,7 +82,11 @@ def nuOrb2r(nu, orb):
               +np.cos(orb['raan'])*np.cos(orb['inc'])*np.sin(arg),
               np.sin(orb['inc'])*np.sin(arg)])
 
-
+def vec2spherical(vec):
+    ra = np.arctan2(vec[...,1],vec[...,0])
+    dist = np.sqrt(np.sum(vec**2, axis=-1))
+    dec = np.arcsin(vec[...,2]/dist)
+    return ra, dec, dist
     
     
     
