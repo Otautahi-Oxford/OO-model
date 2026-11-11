@@ -63,7 +63,7 @@ vinf_table = vconv*np.sqrt(gaiadf['U']**2 + gaiadf['V']**2 + gaiadf['W']**2).to_
 
 beta=1
 ISO_weights = (gaiadf['oneOverESF']*10**(beta*gaiadf['mh'])).to_numpy()
-ISO_weights /= ISO_weights
+ISO_weights /= ISO_weights.sum()
 
 
 def calc_number(r_obs, T, n0):
